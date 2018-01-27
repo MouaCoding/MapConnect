@@ -23,7 +23,6 @@ public class User {
                     Phone,
                     City,
                     State,
-                    id,
                     uid, // added user id, easier to use with FirebaseUser instance
                     AboutMe,
                     ProfilePicture;
@@ -38,7 +37,7 @@ public class User {
     private String Password;
 
     public User() {
-        FirstName = LastName = DisplayName = handle = Email = Phone = City = State = id = uid = AboutMe = null;
+        FirstName = LastName = DisplayName = handle = Email = Phone = City = State = uid = AboutMe = null;
     }
 
     //Copy constructor to assign email to a user's full name
@@ -48,9 +47,10 @@ public class User {
     }
 
     public User(String aFirstName,String aLastName, String aDisplayName, String aHashTag,String aEmail, String aPassword,
-                String aPhone,String aCity,String aState,String aId, String aUid, int numberFollowing, int likesReceived,int numberFollowers) {
+                String aPhone,String aCity,String aState, String aUid, int numberFollowing, int likesReceived,int numberFollowers) {
         FirstName   = aFirstName;
         LastName    = aLastName;
+        fullName    = FirstName + " " + String.valueOf(LastName);
         DisplayName = aDisplayName;
         handle      = aHashTag;
         Email       = aEmail;
@@ -58,7 +58,6 @@ public class User {
         Phone       = aPhone;
         City        = aCity;
         State       = aState;
-        id          = aId;
         uid         = aUid;
         NumberFollowing = numberFollowing;
         LikesReceived = likesReceived;
@@ -67,7 +66,7 @@ public class User {
 
     //Since phone is optional, need a constructor for one without phone
     public User(String aFirstName, String aLastName, String adisplayName, String aHashTag,String aEmail, String aPassword,
-                String aCity, String aState, String aId, String aUid, int numberFollowing, int likesReceived,int numberFollowers) {
+                String aCity, String aState, String aUid, int numberFollowing, int likesReceived,int numberFollowers) {
         FirstName   = aFirstName;
         LastName    = aLastName;
         DisplayName = adisplayName;
@@ -77,7 +76,6 @@ public class User {
         Password    = aPassword;
         City        = aCity;
         State       = aState;
-        id          = aId;
         uid         = aUid;
         NumberFollowing = numberFollowing;
         LikesReceived = likesReceived;

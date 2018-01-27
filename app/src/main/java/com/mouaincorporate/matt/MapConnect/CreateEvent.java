@@ -1,5 +1,6 @@
 package com.mouaincorporate.matt.MapConnect;
 
+import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.DialogInterface;
@@ -32,6 +33,7 @@ import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import com.firebase.client.Firebase;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.Event;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.User;
 import com.mouaincorporate.matt.MapConnect.util.LocationUtils;
@@ -69,7 +71,7 @@ import static android.content.Context.LOCATION_SERVICE;
 import static com.facebook.FacebookSdk.getApplicationContext;
 
 public class CreateEvent extends AppCompatActivity implements OnMapReadyCallback {
-
+    private static final Firebase sRef = new Firebase("https://mapconnect-cf482.firebaseio.com/");
     private ImageButton chooseTheme,
             uploadPhoto;
     private ImageView eventImage;
@@ -369,6 +371,7 @@ public class CreateEvent extends AppCompatActivity implements OnMapReadyCallback
     }
 
 
+    @SuppressLint("MissingPermission")
     @Override
     public void onMapReady(GoogleMap map) {
         mMap = map;

@@ -282,7 +282,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
                             final FirebaseUser user = firebaseAuth.getCurrentUser();
                             final DatabaseReference RootRef = FirebaseDatabase.getInstance().getReference();
                             final Profile profile = Profile.getCurrentProfile();
-                            final User usr = new User(profile.getFirstName(), profile.getLastName(), null, null, null, null, null, null, null, "000", user.getUid(), 0, 0, 0);
+                            final User usr = new User(profile.getFirstName(), profile.getLastName(), null, null, null, null, null, null, null, user.getUid(), 0, 0, 0);
 
                             //updateUI(user);
                             String msg = "Successfully logged in as " + Profile.getCurrentProfile().getFirstName();
@@ -414,7 +414,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
                 com.twitter.sdk.android.core.models.User usr = userResult.data;
                 //FirebaseAuth.getInstance().getCurrentUser().updateEmail(usr.email);
                 try {
-                    User curUser = new User(usr.name, usr.name, usr.screenName, "@" + usr.screenName, usr.email, null, null, usr.location, usr.location, "000", FirebaseAuth.getInstance().getCurrentUser().getUid(), 0, 0, 0);
+                    User curUser = new User(usr.name, usr.name, usr.screenName, "@" + usr.screenName, usr.email, null, null, usr.location, usr.location, FirebaseAuth.getInstance().getCurrentUser().getUid(), 0, 0, 0);
                     RootRef.child("User").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(curUser);
                 }catch(Exception e){}
             }
@@ -437,7 +437,6 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
                         if (task.isSuccessful()) {
                             // Sign in success, update UI with the signed-in user's information
                             FirebaseUser user = firebaseAuth.getCurrentUser();
-                            //updateUI(user);
 
                             String msg = "Successfully logged in as @" + session.getUserName() + " (#" + session.getUserId() + ")";
                             Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
@@ -448,9 +447,7 @@ public class LoginActivity extends AppCompatActivity implements GoogleApiClient.
                             // If sign in fails, display a message to the user.
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
                                     Toast.LENGTH_SHORT).show();
-                            //updateUI(null);
                         }
-
                         pd.dismiss();
                     }
                 });

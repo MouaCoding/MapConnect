@@ -69,7 +69,7 @@ public class AlmostDoneActivity extends AppCompatActivity {
         String lastName = getIntent().getStringExtra("last_name");
         String ProfilePicture = getIntent().getStringExtra("profile_picture");
 
-        final User usr = new User(firstName, lastName, displayNAME, handle1, null, phone, null, null, null, "000", uid, 0, 0, 0);
+        final User usr = new User(firstName, lastName, displayNAME, handle1, null, phone, null, null, null, uid, 0, 0, 0);
         //creating user and indexing by Firebase UID
         DatabaseReference userRef = RootRef.child("User").child(uid);
         userRef.setValue(usr);

@@ -3,6 +3,7 @@ package com.mouaincorporate.matt.MapConnect;
 import android.Manifest;
 import android.animation.IntEvaluator;
 import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -166,6 +167,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
     public int listview = 0;
     FloatingActionButton addEvent;
 
+    @SuppressLint("RestrictedApi")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         final View r = (View) inflater.inflate(R.layout.maps_fragment_layout, container, false);
@@ -297,17 +299,8 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
         mapView.onLowMemory();
     }
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
 
-
+    @SuppressLint("MissingPermission")
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -810,7 +803,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                         for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
                             Log.d("keyevent", childSnapshot.getKey());
                             mMap.clear();
-                            Location loc = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                            @SuppressLint("MissingPermission") Location loc = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
                             handleNewLocation(loc);
                             queryWithFilter(key, childSnapshot.getKey());
                         }

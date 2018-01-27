@@ -43,6 +43,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 
@@ -191,7 +193,15 @@ public class MessageListActivity extends AppCompatActivity {
                             } catch (Exception e) {
                             }
                             mMessages.add(0, msg);
-                            messageListAdapter.notifyDataSetChanged();
+                            //Sort by date
+                            Collections.sort(mMessages, new Comparator<Messages>() {
+                                        @Override
+                                        public int compare(Messages messages, Messages t1) {
+                                            return messages.sDate.compareTo(t1.sDate);
+                                        }
+                                    });
+                            Collections.reverse(mMessages);
+                                    messageListAdapter.notifyDataSetChanged();
                             mListView.setAdapter(messageListAdapter);
                             mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                                 @Override

@@ -251,6 +251,6 @@ public class ChatActivity extends MessageListActivity implements View.OnClickLis
     protected void sendSMSMessage(String phoneNumber, String message) {
         SmsManager smsManager = SmsManager.getDefault();
         smsManager.sendTextMessage(phoneNumber, null, message, null, null);
-        //Toast.makeText(getApplicationContext(), "SMS sent.", Toast.LENGTH_LONG).show();
+        Toast.makeText(getApplicationContext(), "Message sent to " + phoneNumber, Toast.LENGTH_LONG).show();
     }
 }
