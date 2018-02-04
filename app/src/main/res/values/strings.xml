@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MapConnect</string>
+    <string name="app_name">Map Connect</string>
     <string name="title_activity_social">SocialActivity</string>
     <string name="title_activity_post">PostActivity</string>
     <string name="title_activity_maps">Map</string>
@@ -33,7 +33,7 @@
     <string name="permission_rationale">Contacts permissions are needed for providing email completions.</string>
     <string name="facebook_app_id">1862159977386608</string>
     <string name="error_signin">Error logging in.</string>
-    <string name="forgot_password">Forgot?</string>
+    <string name="forgot_password">Forgot Password?</string>
     <string name="keep_logged_in">Keep me logged in</string>
     <string name="zipcode">Zip*</string>
     <string name="forgot_password_description">Forgot your password? Don\'t worry, we can help.</string>

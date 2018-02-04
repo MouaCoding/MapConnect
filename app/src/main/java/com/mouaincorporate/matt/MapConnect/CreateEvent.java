@@ -116,7 +116,7 @@ public class CreateEvent extends AppCompatActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.create_event_page_layout);
+        setContentView(R.layout.create_event_layout2);
 
 
         backButton = (ImageButton) findViewById(R.id.back_button);

@@ -17,7 +17,7 @@ import com.amazonaws.mobileconnectors.pinpoint.PinpointConfiguration;
 public class MainActivity extends AppCompatActivity {
     MainPagerAdapter pagerAdapter;
     ViewPager mainViewPager;
-    public static PinpointManager pinpointManager; //AWS Analytics
+    boolean alreadyExecuted = false;
 
 
     @Override
@@ -25,22 +25,6 @@ public class MainActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        AWSMobileClient.getInstance().initialize(this).execute();
-
-        PinpointConfiguration pinpointConfig = new PinpointConfiguration(
-                getApplicationContext(),
-                AWSMobileClient.getInstance().getCredentialsProvider(),
-                AWSMobileClient.getInstance().getConfiguration());
-
-        pinpointManager = new PinpointManager(pinpointConfig);
-
-        // Start a session with Pinpoint
-        pinpointManager.getSessionClient().startSession();
-
-        // Stop the session and submit the default app started event
-        pinpointManager.getSessionClient().stopSession();
-        pinpointManager.getAnalyticsClient().submitEvents();
 
         // populate fragments
         pagerAdapter = new MainPagerAdapter(getSupportFragmentManager());
@@ -50,8 +34,10 @@ public class MainActivity extends AppCompatActivity {
         //mainViewPager.setOffscreenPageLimit(4);
         mainViewPager.setAdapter(new MainPagerAdapter(getSupportFragmentManager()));
 
-        BottomNavigationView bottomNavigationView = (BottomNavigationView) findViewById(R.id.main_bottom_navigation);
 
+
+
+        BottomNavigationView bottomNavigationView = (BottomNavigationView) findViewById(R.id.main_bottom_navigation);
         bottomNavigationView.setOnNavigationItemSelectedListener(
                 new BottomNavigationView.OnNavigationItemSelectedListener() {
                     @Override
@@ -77,6 +63,11 @@ public class MainActivity extends AppCompatActivity {
                         return true;
                     }
                 });
+
+        if(!alreadyExecuted) {
+            MapsFragment.deleteExpiredEvents();
+            alreadyExecuted = true;
+        }
     }
 
     private class MainPagerAdapter extends FragmentStatePagerAdapter {

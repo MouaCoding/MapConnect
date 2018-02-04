@@ -34,12 +34,11 @@
             android:textSize="30sp" />
 
         <Button
-            android:text="@string/done_edit"
+            android:id="@+id/done_edit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/button_with_border"
-            android:id="@+id/done_edit"
-             />
+            android:background="@color/tw__transparent"
+            android:text="@string/done_edit" />
 
     </LinearLayout>
 

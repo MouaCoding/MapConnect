@@ -1,8 +1,5 @@
 package com.mouaincorporate.matt.MapConnect.firebase_entry;
 
-/**
- * Created by NCC-1701 on 3/15/2017.
- */
 
 public class FollowingUser {
     public Boolean filler;

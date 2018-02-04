@@ -94,6 +94,7 @@ public class NotificationFragment extends Fragment {
         createLoc = new LatLng(loc.getLatitude(), loc.getLongitude());
 
         profile = (ImageView) r.findViewById(R.id.user_mini_profile);
+        try{setProfile();}catch (Exception e){}
         profile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -108,7 +109,7 @@ public class NotificationFragment extends Fragment {
         photo = (ImageButton) r.findViewById(R.id.insert_photo);
 //        emoji =  (ImageButton) r.findViewById(R.id.insert_emoji);
 //        video = (ImageButton) r.findViewById(R.id.insert_video);
-        post_content = (EditText) r.findViewById(R.id.content_post);
+        post_content = (EditText) r.findViewById(R.id.post_content);
         createPost = (Button) r.findViewById(R.id.create_post_button_notification);
         clicks();
 
@@ -162,11 +163,30 @@ public class NotificationFragment extends Fragment {
         list = (ListView) r.findViewById(R.id.global_list);
         userList = (ListView) r.findViewById(R.id.global_list);
 
+        FirebaseDatabase.getInstance().getReference("User").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("Following")
+                .child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(new FollowingUser());
+
         //getPosts();
         getUsersFollowed();
         getPostsNotifications();
 
         return r;
+    }
+
+    public void setProfile() {
+        FirebaseDatabase.getInstance().getReference().child("User").child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        User user = dataSnapshot.getValue(User.class);
+                        Picasso.with(getContext()).load(user.ProfilePicture).transform(new CircleTransform()).into(profile);
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
     }
 
     @Override

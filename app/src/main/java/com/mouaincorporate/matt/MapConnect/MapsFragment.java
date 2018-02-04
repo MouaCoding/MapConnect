@@ -50,6 +50,8 @@ import android.widget.Toast;
 
 import com.mouaincorporate.matt.MapConnect.firebase_entry.City;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.Event;
+import com.mouaincorporate.matt.MapConnect.firebase_entry.Messages;
+import com.mouaincorporate.matt.MapConnect.util.CircleTransform;
 import com.mouaincorporate.matt.MapConnect.util.RHRNNotifications;
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -84,15 +86,23 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+import com.squareup.picasso.Picasso;
 
 import static com.facebook.FacebookSdk.getApplicationContext;
+import static java.lang.Integer.parseInt;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -160,6 +170,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
     //creating a storage reference.
     StorageReference storageRef = storage.getReferenceFromUrl("gs://mapconnect-cf482.appspot.com/");
     Uri filePath;
+    boolean alreadyExecuted = false;
 
     public ArrayList<Event> eventArrayList;
     public TrendingFragment.EventAdapter eventAdapter;
@@ -177,7 +188,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
         mapView.getMapAsync(this);
         mapView.onCreate(savedInstanceState);
 
-        drawPointsWithinUserRadius();
+
         //mapView = new MapView(getActivity());
         layoutToAdd = (LinearLayout) r.findViewById(R.id.maps_fragment_layout);
 
@@ -230,10 +241,15 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                     }
                 });
 
-        // restore any state here if necessary
+
+
+
+        drawPointsWithinUserRadius();
 
         return r;
     }
+
+
 
 
     @Override
@@ -429,19 +445,21 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
     public void onConnected(@Nullable Bundle bundle) {
         Log.i(TAG, "Location services connected.");
 
-        //if app has permission to use current location,
-        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            //finds the current location
-            Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-            if (location == null) {
-                //if it cannot, then it requests for the location from client
-                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-            } else {
+        try {
+            //if app has permission to use current location,
+            if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                //finds the current location
+                Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                if (location == null) {
+                    //if it cannot, then it requests for the location from client
+                    LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+                } else {
 
-                //set the map to the current location
-                handleNewLocation(location);
+                    //set the map to the current location
+                    handleNewLocation(location);
+                }
             }
-        }
+        }catch (Exception e){e.printStackTrace();}
     }
 
     @Override
@@ -566,6 +584,51 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
 
     }
 
+    public static void deleteExpiredEvents() {
+        DatabaseReference eventsRef = FirebaseDatabase.getInstance().getReference().child("Event");
+        eventsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                //loop through events and check if current time exceeds end date and time
+                for (DataSnapshot dataSnapshot1: dataSnapshot.getChildren()){
+                    Event e = dataSnapshot1.getValue(Event.class);
+                    String eventID = e.eventID;
+                    String currentDateandTime = new SimpleDateFormat("MMddyyyyHHmm").format(new Date());
+                    Log.d("CURRENTTIME", currentDateandTime);
+
+                    String time = e.endDate +" " + e.endTime;
+                    DateFormat inDateFormat = new SimpleDateFormat("M/dd/yyyy HH:mmaa");
+                    DateFormat outDateFormat = new SimpleDateFormat("MMddyyyyHHmm");
+                    try {
+                        Date outDate = inDateFormat.parse(time);
+                        Date newDate = new Date(outDate.getTime() + (7L * 24L * 60L * 60L * 1000L) ); // get the date 7 days later (expired dates after 7 days get deleted from database)
+                        time = outDateFormat.format(newDate);
+                    } catch (ParseException e1) {e1.printStackTrace();}
+                    Log.d("CURRENTTIMEEE", time);
+
+                    if(Long.parseLong(currentDateandTime) > Long.parseLong(time)){
+                        //TODO: Delete events after they expire
+                        //Toast.makeText(getApplicationContext(), "Deleting Event...", Toast.LENGTH_SHORT).show();
+                        Log.d("Delete", eventID);
+//                        FirebaseDatabase.getInstance().getReference().child("Event").child(eventID).removeValue();
+//                        FirebaseDatabase.getInstance().getReference().child("EventLocations").child(eventID).removeValue();
+//                        FirebaseDatabase.getInstance().getReference().child("OtherEventLocations").child(eventID).removeValue();
+//                        FirebaseDatabase.getInstance().getReference().child("PartyEventLocations").child(eventID).removeValue();
+//                        FirebaseDatabase.getInstance().getReference().child("SportEventLocations").child(eventID).removeValue();
+//                        FirebaseDatabase.getInstance().getReference().child("EducationEventLocations").child(eventID).removeValue();
+//                        FirebaseDatabase.getInstance().getReference().child("ClubEventEventLocations").child(eventID).removeValue();
+//                        FirebaseDatabase.getInstance().getReference().child("Likes").child(eventID).removeValue();
+                    }
+
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
 
     public void drawPointsWithinUserRadius() {
         eventsOnMap = FirebaseDatabase.getInstance().getReference("EventLocations");
@@ -620,6 +683,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                 eventMarkerKeys.remove(eventKeyMarkers.remove(s));
                 m.remove();
             }  // event no longer in range, so remove it from hashmaps and map
+
 
             @Override
             public void onGeoQueryError(DatabaseError e) {

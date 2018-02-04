@@ -34,11 +34,12 @@
             <!-- Optional if user evented an image, it should display at the top-->
             <ImageView
                 android:id="@+id/view_user_eventimage"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_width="wrap_content"
+                android:layout_height="240dp"
+                android:background="@drawable/image_view_border"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
-                android:visibility="gone" />
+                android:src="@drawable/events" />
 
             <requestFocus />
 
