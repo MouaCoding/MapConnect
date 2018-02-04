@@ -11,6 +11,7 @@ import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -277,7 +278,6 @@ public class ProfilePageFragment extends Fragment {
         sharedEventArray = new ArrayList<>();
         sharedPostArray = new ArrayList<>();
 
-
         populateSharedPost();
         populateSharedEvent();
         queryFirebase();
@@ -440,6 +440,7 @@ public class ProfilePageFragment extends Fragment {
                 });
     }
 
+
     public void populateSharedPost() {
         DatabaseReference shared = FirebaseDatabase.getInstance().getReference("Shares").child(fbuser.getUid().toString());
         shared.orderByChild("type").equalTo("Post").limitToLast(1);
@@ -464,7 +465,6 @@ public class ProfilePageFragment extends Fragment {
                                                         public void onPostReceived(Post... posts) {
                                                             Post pst = posts[0];
                                                             sharedPostArray.add(0, pst);
-                                                            android.util.Log.e("nat", String.valueOf(sharedEventAdapter.getCount()));
                                                             sharedPostAdapter.notifyDataSetChanged();
                                                         }
 
@@ -523,7 +523,6 @@ public class ProfilePageFragment extends Fragment {
                                                     public void onEventReceived(Event... events) {
                                                         Event ev = events[0];
                                                         sharedEventArray.add(0, ev);
-                                                        android.util.Log.e("nat", String.valueOf(sharedEventAdapter.getCount()));
                                                         sharedEventAdapter.notifyDataSetChanged();
                                                     }
 

@@ -293,6 +293,20 @@ public class TrendingFragment extends Fragment {
 
         public void setButtons(final View view, final String EventID, final String currUsr) {
             final ImageButton likeButton = (ImageButton) view.findViewById(R.id.user_event_like_button);
+
+            DatabaseReference likeref = FirebaseDatabase.getInstance().getReference("Likes").child(EventID);
+            likeref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if(dataSnapshot.hasChild(currUsr))
+                        likeButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.crimson));
+                    else
+                        likeButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.colorTextDark));
+                }
+                @Override
+                public void onCancelled(DatabaseError databaseError) {}
+            });
+
             likeButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -339,6 +353,16 @@ public class TrendingFragment extends Fragment {
             });
 
             final ImageButton shareButton = (ImageButton) view.findViewById(R.id.user_event_share_button);
+            DatabaseReference shareref = FirebaseDatabase.getInstance().getReference("Shares").child(currUsr);
+            shareref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if(dataSnapshot.hasChild(EventID))
+                        shareButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.MainBlue));
+                }
+                @Override
+                public void onCancelled(DatabaseError databaseError) {}
+            });
             shareButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {

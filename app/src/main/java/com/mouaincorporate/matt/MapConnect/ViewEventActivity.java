@@ -78,6 +78,7 @@ public class ViewEventActivity extends AppCompatActivity implements OnMapReadyCa
         sharesCount = (TextView) findViewById(R.id.user_event_share_count);
         viewComments = (TextView) findViewById(R.id.view_comments);
         commentList.setVisibility(View.VISIBLE);
+        try{getComments(getIntent().getStringExtra("eventid"), false);}catch (Exception e){e.printStackTrace();}
         viewComments.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -124,6 +125,19 @@ public class ViewEventActivity extends AppCompatActivity implements OnMapReadyCa
 
 
         likeButton = (ImageButton) findViewById(R.id.user_event_like_button);
+        DatabaseReference likeref = FirebaseDatabase.getInstance().getReference("Likes").child(EventID);
+        likeref.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if(dataSnapshot.hasChild(currUsr))
+                    likeButton.setColorFilter(ContextCompat.getColor(ViewEventActivity.this,R.color.crimson));
+                else
+                    likeButton.setColorFilter(ContextCompat.getColor(ViewEventActivity.this,R.color.colorTextDark));
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {}
+        });
+
         likeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -151,13 +165,23 @@ public class ViewEventActivity extends AppCompatActivity implements OnMapReadyCa
                 Intent intent = new Intent(context, CommentsListActivity.class);
                 intent.putExtra("postID", EventID.toString());
                 intent.putExtra("type", "Event");
-                //context.startActivityForResult(intent, RC);
                 context.startActivity(intent);
                 updateCounts(EventID);
 
             }
         });
         shareButton = (ImageButton) findViewById(R.id.user_event_share_button);
+        DatabaseReference shareref = FirebaseDatabase.getInstance().getReference("Shares").child(currUsr);
+        shareref.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if(dataSnapshot.hasChild(EventID))
+                    shareButton.setColorFilter(ContextCompat.getColor(ViewEventActivity.this,R.color.MainBlue));
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {}
+        });
+
         shareButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

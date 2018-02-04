@@ -151,6 +151,18 @@ public class SharingAdapters {
         public void setButtons(final View view, final String PostID, final String ownerID)
         {
             likeButton = (ImageButton) view.findViewById(R.id.user_post_like_button);
+            DatabaseReference likeref = FirebaseDatabase.getInstance().getReference("Likes").child(PostID);
+            likeref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if(dataSnapshot.hasChild(ownerID))
+                        likeButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.crimson));
+                    else
+                        likeButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.colorTextDark));
+                }
+                @Override
+                public void onCancelled(DatabaseError databaseError) {}
+            });
             likeButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -196,6 +208,16 @@ public class SharingAdapters {
             });
 
             shareButton = (ImageButton) view.findViewById(R.id.user_post_share_button);
+            DatabaseReference shareref = FirebaseDatabase.getInstance().getReference("Shares").child(ownerID);
+            shareref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if(dataSnapshot.hasChild(PostID))
+                        shareButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.MainBlue));
+                }
+                @Override
+                public void onCancelled(DatabaseError databaseError) {}
+            });
             shareButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -213,7 +235,7 @@ public class SharingAdapters {
                 }
             });
 
-
+            updateCounts(PostID, view);
 
         }
 
@@ -441,7 +463,6 @@ public class SharingAdapters {
 
         SharedEventAdapter(Context context, ArrayList<Event> users, boolean isOwner) {
             super(context, R.layout.user_event_framed_layout, R.id.user_event_title, users);
-            android.util.Log.e("nat", "got here");
             Owner = isOwner;
 
         }
@@ -449,9 +470,7 @@ public class SharingAdapters {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             convertView = super.getView(position, convertView, parent);
-            android.util.Log.e("nat", "in getView");
             final Event event = getItem(position);
-            android.util.Log.e("nat", event.eventID);
             TextView eventTitle = (TextView) convertView.findViewById(R.id.user_event_title);
             ImageView eventImage = (ImageView) convertView.findViewById(R.id.user_event_mini_image);
             TextView startTime = (TextView) convertView.findViewById(R.id.user_event_start_time);
@@ -573,6 +592,18 @@ public class SharingAdapters {
 
         public void setButtons(final View view, final String EventID, final String currUsr) {
             likeButton = (ImageButton) view.findViewById(R.id.user_event_like_button);
+            DatabaseReference likeref = FirebaseDatabase.getInstance().getReference("Likes").child(EventID);
+            likeref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if(dataSnapshot.hasChild(currUsr))
+                        likeButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.crimson));
+                    else
+                        likeButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.colorTextDark));
+                }
+                @Override
+                public void onCancelled(DatabaseError databaseError) {}
+            });
             likeButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -619,6 +650,16 @@ public class SharingAdapters {
             });
 
             shareButton = (ImageButton) view.findViewById(R.id.user_event_share_button);
+            DatabaseReference shareref = FirebaseDatabase.getInstance().getReference("Shares").child(currUsr);
+            shareref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if(dataSnapshot.hasChild(EventID))
+                        shareButton.setColorFilter(ContextCompat.getColor(getContext(),R.color.MainBlue));
+                }
+                @Override
+                public void onCancelled(DatabaseError databaseError) {}
+            });
             shareButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -634,6 +675,8 @@ public class SharingAdapters {
                     popupMenu(view, currUsr, EventID);
                 }
             });
+
+            updateCounts(EventID, view);
 
         }
 
