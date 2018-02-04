@@ -77,6 +77,7 @@ public class ViewEventActivity extends AppCompatActivity implements OnMapReadyCa
         commentsCount = (TextView) findViewById (R.id.user_event_comment_count);
         sharesCount = (TextView) findViewById(R.id.user_event_share_count);
         viewComments = (TextView) findViewById(R.id.view_comments);
+        commentList.setVisibility(View.VISIBLE);
         viewComments.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
