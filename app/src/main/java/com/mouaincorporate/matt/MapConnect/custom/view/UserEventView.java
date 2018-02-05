@@ -90,6 +90,7 @@ public class UserEventView extends FrameLayout {
         eventStartTimeView = (TextView) findViewById(R.id.user_event_start_time);
         eventEndTimeView = (TextView) findViewById(R.id.user_event_end_time);
         eventLocationView = (TextView) findViewById(R.id.user_event_location);
+        //directions = (ImageButton) findViewById(R.id.directions);
 
 
         eventRSVPStateSpinner = (Spinner) findViewById(R.id.user_event_rsvp_state_spinner);
@@ -101,6 +102,8 @@ public class UserEventView extends FrameLayout {
         likesCount = (TextView) findViewById(R.id.user_event_like_count);
         commentsCount = (TextView) findViewById (R.id.user_event_comment_count);
         sharesCount = (TextView) findViewById(R.id.user_event_share_count);
+
+
 
         likeButton = (ImageButton) findViewById(R.id.user_event_like_button);
         likeButton.setOnClickListener(new OnClickListener() {

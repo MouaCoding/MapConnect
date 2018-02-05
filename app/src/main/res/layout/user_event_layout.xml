@@ -87,6 +87,7 @@
             android:layout_toEndOf="@+id/user_event_end_time"
             android:gravity="right" />
 
+
     </RelativeLayout>
 
     <View

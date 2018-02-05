@@ -5,6 +5,7 @@ import android.support.v4.app.DialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 
 import com.mouaincorporate.matt.MapConnect.custom.view.UserEventView;
 
@@ -14,7 +15,6 @@ import com.mouaincorporate.matt.MapConnect.custom.view.UserEventView;
 
 public class ViewEventDialogFragment extends DialogFragment {
     UserEventView eventView;
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -30,6 +30,7 @@ public class ViewEventDialogFragment extends DialogFragment {
         Bundle args = new Bundle();
         args.putString("event_id", eventID);
         ViewEventDialogFragment r = new ViewEventDialogFragment();
+
         r.setArguments(args);
 
         return r;

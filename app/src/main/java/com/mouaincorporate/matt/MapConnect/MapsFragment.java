@@ -4,6 +4,7 @@ import android.Manifest;
 import android.animation.IntEvaluator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -20,6 +21,7 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -36,6 +38,7 @@ import android.support.v7.app.AlertDialog;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupMenu;
@@ -48,6 +51,7 @@ import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Toast;
 
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.City;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.Event;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.Messages;
@@ -88,12 +92,17 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 
+import org.json.JSONObject;
+
+import static android.content.Context.LOCATION_SERVICE;
 import static com.facebook.FacebookSdk.getApplicationContext;
 import static java.lang.Integer.parseInt;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.DateFormat;
@@ -155,6 +164,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
 
     public Bitmap Marker;
 
+    ArrayList<LatLng> MarkerPoints;
     public HashMap<Marker, String> eventMarkerKeys = new HashMap<Marker, String>();
     public HashMap<String, Marker> eventKeyMarkers = new HashMap<String, Marker>();
     public HashMap<Marker, String> postMarkerKeys = new HashMap<Marker, String>();
@@ -176,7 +186,8 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
     public TrendingFragment.EventAdapter eventAdapter;
     public ListView eventListView;
     public int listview = 0;
-    FloatingActionButton addEvent;
+    FloatingActionButton addEvent, directions;
+    ImageView changeSattelite;
 
     @SuppressLint("RestrictedApi")
     @Override
@@ -187,10 +198,14 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
 //        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         mapView.getMapAsync(this);
         mapView.onCreate(savedInstanceState);
+        changeSattelite = (ImageView) r.findViewById(R.id.sattelite);
 
+        MarkerPoints = new ArrayList<>();
 
         //mapView = new MapView(getActivity());
         layoutToAdd = (LinearLayout) r.findViewById(R.id.maps_fragment_layout);
+
+        directions = (FloatingActionButton) r.findViewById(R.id.place_new_marker);
 
         addEvent = (FloatingActionButton) r.findViewById(R.id.create_new_message);
         addEvent.setOnClickListener(new View.OnClickListener() {
@@ -228,10 +243,24 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                                 break;
                             case R.id.favorite: //TODO: Refresh or favorite?
                                 Toast.makeText(getApplicationContext(), "Refreshing...", Toast.LENGTH_SHORT).show();
+                                mMap.clear();
                                 drawPointsWithinUserRadius();
                                 onResume();
                                 Toast.makeText(getApplicationContext(), "Refreshed!", Toast.LENGTH_SHORT).show();
-                                //promptFavorite();
+                                LocationManager locationManager = (LocationManager) getContext().getSystemService(LOCATION_SERVICE);
+                                @SuppressLint("MissingPermission") Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                                LatLng latLng = null;
+                                if (location != null) {
+                                    latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                                }
+                                MarkerOptions option = new MarkerOptions()
+                                        .position(latLng)
+                                        .draggable(true)
+                                        .title("My Location");
+                                //.icon(BitmapDescriptorFactory.fromResource(R.drawable.exc));
+                                mMap.addMarker(option);
+                                animateCircle(latLng);
+                                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
                                 break;
                             case R.id.refresh:
                                 optionsMenu(options);
@@ -320,29 +349,89 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
         mMap.setMyLocationEnabled(true);
+        changeSattelite.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(mMap.getMapType() == GoogleMap.MAP_TYPE_NORMAL)
+                    mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+                else if(mMap.getMapType() == GoogleMap.MAP_TYPE_HYBRID)
+                    mMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+                else
+                    mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+            }
+        });
 
         curUserID = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
+        directions.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+                    @Override
+                    public void onMapClick(LatLng point) {
+                        mMap.clear();
+                        LocationManager locationManager = (LocationManager) getContext().getSystemService(LOCATION_SERVICE);
+                        @SuppressLint("MissingPermission") Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                        LatLng latLng = null;
+                        if (location != null) {
+                            latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                        }
+                        MarkerPoints.add(latLng);
+                        MarkerPoints.add(point);
+
+                        MarkerOptions opt = new MarkerOptions();
+
+                        // Setting the position of the marker
+                        opt.position(point);
+                        opt.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                        mMap.addMarker(opt);
+
+                        LatLng origin = MarkerPoints.get(0);
+                        LatLng dest = MarkerPoints.get(1);
+
+                        // Getting URL to the Google Directions API
+                        String url = getUrl(origin, dest);
+                        FetchUrl FetchUrl = new FetchUrl();
+
+                        // Start downloading json data from Google Directions API
+                        FetchUrl.execute(url);
+//                    mMap.moveCamera(CameraUpdateFactory.newLatLng(origin));
+//                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+
+                        MarkerPoints.clear();
+
+                        MarkerOptions options = new MarkerOptions()
+                                .position(latLng)
+                                .draggable(true)
+                                .title("My Location");
+                        //.icon(BitmapDescriptorFactory.fromResource(R.drawable.exc));
+                        mMap.addMarker(options);
+//
+                        drawPointsWithinUserRadius();
+                        animateCircle(latLng);
+
+                    }
+                });
+            }
+        });
+
+
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
-            public boolean onMarkerClick(Marker marker) {
-
+            public boolean onMarkerClick(final Marker marker) {
                 if (eventMarkerKeys.containsKey(marker)) {
                     ViewEventDialogFragment.createInstance(eventMarkerKeys.get(marker)).show(getChildFragmentManager(), null);
+                    drawRoute(marker);
                 }  // if marker clicked is an event
-
                 else if (postMarkerKeys.containsKey(marker)) {
                     ViewPostDialogFragment.createInstance(postMarkerKeys.get(marker)).show(getChildFragmentManager(), null);
                 }  // if marker clicked is a post
-
                 return true;
             }
         });  // add listeners for clicking markers
 
         mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
-
             @Override
             public void onMarkerDragEnd(Marker marker) {
                 ourLoc.remove();
@@ -438,6 +527,68 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
 */
 
 
+    }
+
+    public void drawRoute(Marker marker) {
+        LocationManager locationManager = (LocationManager) getContext().getSystemService(LOCATION_SERVICE);
+        @SuppressLint("MissingPermission") Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        LatLng latLng = null;
+        if (location != null) {
+            latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        }
+        MarkerPoints.add(latLng);
+        MarkerPoints.add(marker.getPosition());
+
+        LatLng origin = MarkerPoints.get(0);
+        LatLng dest = MarkerPoints.get(1);
+
+        // Getting URL to the Google Directions API
+        String url = getUrl(origin, dest);
+        Log.d("onMapClick", url.toString());
+        FetchUrl FetchUrl = new FetchUrl();
+
+        // Start downloading json data from Google Directions API
+        FetchUrl.execute(url);
+        //move map camera
+//                    mMap.moveCamera(CameraUpdateFactory.newLatLng(origin));
+//                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+
+        MarkerPoints.clear();
+        mMap.clear();
+        MarkerOptions options = new MarkerOptions()
+                .position(latLng)
+                .draggable(true)
+                .title("My Location");
+        //.icon(BitmapDescriptorFactory.fromResource(R.drawable.exc));
+        mMap.addMarker(options);
+
+        drawPointsWithinUserRadius();
+        animateCircle(latLng);
+    }
+
+    private String getUrl(LatLng origin, LatLng dest) {
+
+        // Origin of route
+        String str_origin = "origin=" + origin.latitude + "," + origin.longitude;
+
+        // Destination of route
+        String str_dest = "destination=" + dest.latitude + "," + dest.longitude;
+
+
+        // Sensor enabled
+        String sensor = "sensor=false";
+
+        // Building the parameters to the web service
+        String parameters = str_origin + "&" + str_dest + "&" + sensor;
+
+        // Output format
+        String output = "json";
+
+        // Building the url to the web service
+        String url = "https://maps.googleapis.com/maps/api/directions/" + output + "?" + parameters;
+
+
+        return url;
     }
 
 
@@ -554,8 +705,13 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
         }
 
+        animateCircle(latLng);
+
+    }
+
+    public void animateCircle(LatLng latLng){
         final Circle circle = mMap.addCircle(new CircleOptions()
-                .center(new LatLng(curLatitude, curLongitude))
+                .center(latLng)
                 .strokeColor(Color.CYAN)
                 .radius(radius));
         removeCircle = circle;
@@ -581,7 +737,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
         });
 
         vAnimator.start();
-
     }
 
     public static void deleteExpiredEvents() {
@@ -1202,5 +1357,153 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
         if (path != null) return Uri.parse(path);
         else return null;
     }
+
+
+
+
+    // Fetches data from url passed
+    public class FetchUrl extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... url) {
+
+            // For storing data from web service
+            String data = "";
+
+            try {
+                // Fetching the data from web service
+                data = downloadUrl(url[0]);
+                Log.d("Background Task data", data.toString());
+            } catch (Exception e) {
+                Log.d("Background Task", e.toString());
+            }
+            return data;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+            ParserTask parserTask = new ParserTask();
+
+            // Invokes the thread for parsing the JSON data
+            parserTask.execute(result);
+
+        }
+    }
+
+    /**
+     * A class to parse the Google Places in JSON format
+     */
+    private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<String, String>>>> {
+
+        // Parsing the data in non-ui thread
+        @Override
+        protected List<List<HashMap<String, String>>> doInBackground(String... jsonData) {
+
+            JSONObject jObject;
+            List<List<HashMap<String, String>>> routes = null;
+
+            try {
+                jObject = new JSONObject(jsonData[0]);
+                Log.d("ParserTask",jsonData[0].toString());
+                DataParser parser = new DataParser();
+                Log.d("ParserTask", parser.toString());
+
+                // Starts parsing data
+                routes = parser.parse(jObject);
+                Log.d("ParserTask","Executing routes");
+                Log.d("ParserTask",routes.toString());
+
+            } catch (Exception e) {
+                Log.d("ParserTask",e.toString());
+                e.printStackTrace();
+            }
+            return routes;
+        }
+
+        // Executes in UI thread, after the parsing process
+        @Override
+        protected void onPostExecute(List<List<HashMap<String, String>>> result) {
+            ArrayList<LatLng> points;
+            PolylineOptions lineOptions = null;
+
+            // Traversing through all the routes
+            for (int i = 0; i < result.size(); i++) {
+                points = new ArrayList<>();
+                lineOptions = new PolylineOptions();
+
+                // Fetching i-th route
+                List<HashMap<String, String>> path = result.get(i);
+
+                // Fetching all the points in i-th route
+                for (int j = 0; j < path.size(); j++) {
+                    HashMap<String, String> point = path.get(j);
+
+                    double lat = Double.parseDouble(point.get("lat"));
+                    double lng = Double.parseDouble(point.get("lng"));
+                    LatLng position = new LatLng(lat, lng);
+
+                    points.add(position);
+                }
+
+                // Adding all the points in the route to LineOptions
+                lineOptions.addAll(points);
+                lineOptions.width(10);
+                lineOptions.color(Color.RED);
+
+                Log.d("onPostExecute","onPostExecute lineoptions decoded");
+
+            }
+
+            // Drawing polyline in the Google Map for the i-th route
+            if(lineOptions != null) {
+                mMap.addPolyline(lineOptions);
+            }
+            else {
+                Log.d("onPostExecute","without Polylines drawn");
+            }
+        }
+    }
+
+
+    private String downloadUrl(String strUrl) throws IOException {
+        String data = "";
+        InputStream iStream = null;
+        HttpURLConnection urlConnection = null;
+        try {
+            URL url = new URL(strUrl);
+
+            // Creating an http connection to communicate with url
+            urlConnection = (HttpURLConnection) url.openConnection();
+
+            // Connecting to url
+            urlConnection.connect();
+
+            // Reading data from url
+            iStream = urlConnection.getInputStream();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(iStream));
+
+            StringBuffer sb = new StringBuffer();
+
+            String line = "";
+            while ((line = br.readLine()) != null) {
+                sb.append(line);
+            }
+
+            data = sb.toString();
+            Log.d("downloadUrl", data.toString());
+            br.close();
+
+        } catch (Exception e) {
+            Log.d("Exception", e.toString());
+        } finally {
+            iStream.close();
+            urlConnection.disconnect();
+        }
+        return data;
+    }
+
 
 }
