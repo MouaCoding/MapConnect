@@ -18,8 +18,11 @@
 
 
     <FrameLayout
+        android:id="@+id/mapFrameLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
+
         <com.google.android.gms.maps.MapView
             android:id="@+id/primary_map"
             android:layout_width="match_parent"
@@ -32,8 +35,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|right"
-            android:layout_marginBottom="80dp"
-            android:layout_marginRight="30dp"
+            android:layout_marginBottom="140dp"
+            android:layout_marginRight="20dp"
             app:backgroundTint="@color/MainRed"
             app:fabSize="mini"
             app:srcCompat="@android:drawable/ic_menu_directions" />
@@ -43,8 +46,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|right"
-            android:layout_marginBottom="20dp"
-            android:layout_marginRight="30dp"
+            android:layout_marginBottom="80dp"
+            android:layout_marginRight="20dp"
             app:backgroundTint="@color/MainRed"
             app:fabSize="mini"
             app:srcCompat="@android:drawable/ic_input_add" />
@@ -54,11 +57,18 @@
             android:id="@+id/sattelite"
             android:layout_width="50dp"
             android:layout_height="50dp"
+            android:layout_gravity="bottom|left"
             android:layout_marginBottom="40dp"
             android:layout_marginLeft="20dp"
-            android:layout_gravity="bottom|left"
-            android:src="@drawable/sattelite"/>
+            android:src="@drawable/sattelite" />
         />
+        <include layout="@layout/directions2"
+            android:id="@+id/direction_arrow"
+            android:layout_gravity="bottom"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:visibility="gone">
+        </include>
     </FrameLayout>
 
 </LinearLayout>

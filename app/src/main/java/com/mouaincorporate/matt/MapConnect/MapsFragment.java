@@ -1,10 +1,13 @@
 package com.mouaincorporate.matt.MapConnect;
 
 import android.Manifest;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.IntEvaluator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -34,7 +37,10 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.widget.SlidingPaneLayout;
 import android.support.v7.app.AlertDialog;
+import android.view.ContextThemeWrapper;
+import android.view.Gravity;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -49,9 +55,31 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.location.places.GeoDataClient;
+import com.google.android.gms.location.places.PlacePhotoMetadata;
+import com.google.android.gms.location.places.PlacePhotoMetadataBuffer;
+import com.google.android.gms.location.places.PlacePhotoMetadataResponse;
+import com.google.android.gms.location.places.PlacePhotoResponse;
+import com.google.android.gms.maps.OnStreetViewPanoramaReadyCallback;
+import com.google.android.gms.maps.StreetViewPanorama;
+import com.google.android.gms.maps.StreetViewPanoramaFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.maps.model.PointOfInterest;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.mouaincorporate.matt.MapConnect.MapsUtilities.ApiService;
+import com.mouaincorporate.matt.MapConnect.MapsUtilities.Constant;
+import com.mouaincorporate.matt.MapConnect.MapsUtilities.Data;
+import com.mouaincorporate.matt.MapConnect.MapsUtilities.DirectionResultsModel;
+import com.mouaincorporate.matt.MapConnect.MapsUtilities.Legs;
+import com.mouaincorporate.matt.MapConnect.MapsUtilities.LoggingInterceptorGoogle;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.City;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.Event;
 import com.mouaincorporate.matt.MapConnect.firebase_entry.Messages;
@@ -90,6 +118,9 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+import com.sothree.slidinguppanel.SlidingUpPanelLayout;
+import com.sothree.slidinguppanel.SlidingUpPanelLayout.PanelSlideListener;
+import com.sothree.slidinguppanel.SlidingUpPanelLayout.PanelState;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONObject;
@@ -116,13 +147,35 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+
+import okhttp3.OkHttpClient;
+import retrofit2.Call;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MapsFragment extends Fragment implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener,
-        ActivityCompat.OnRequestPermissionsResultCallback {
+        ActivityCompat.OnRequestPermissionsResultCallback,
+        GoogleMap.OnPoiClickListener{
 
+    public TextView     driveDuration,
+                        driveDistance,
+                        walkDuration,
+                        walkDistance,
+                        bikeDuration,
+                        bikeDistance,
+                        busDuration,
+                        busDistance;
+    public RadioButton  driveRB,
+                        walkRB,
+                        bikeRB;
+    public RadioGroup   rgModes;
+    int mMode = 0;
+
+    private ApiService serviceGoogleDirection;
     private static final int LOCATIONS_PERMISSION = 0;
     private static final int INITIAL_REQUEST = 1337;
     private static final int LOCATION_REQUEST = INITIAL_REQUEST + 3;
@@ -188,6 +241,8 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
     public int listview = 0;
     FloatingActionButton addEvent, directions;
     ImageView changeSattelite;
+    View view2;
+    public GeoDataClient mGeoDataClient;
 
     @SuppressLint("RestrictedApi")
     @Override
@@ -201,9 +256,11 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
         changeSattelite = (ImageView) r.findViewById(R.id.sattelite);
 
         MarkerPoints = new ArrayList<>();
+        mGeoDataClient = Places.getGeoDataClient(getContext(), null);
 
         //mapView = new MapView(getActivity());
         layoutToAdd = (LinearLayout) r.findViewById(R.id.maps_fragment_layout);
+        view2 = r.findViewById(R.id.direction_arrow);
 
         directions = (FloatingActionButton) r.findViewById(R.id.place_new_marker);
 
@@ -243,6 +300,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                                 break;
                             case R.id.favorite: //TODO: Refresh or favorite?
                                 Toast.makeText(getApplicationContext(), "Refreshing...", Toast.LENGTH_SHORT).show();
+                                view2.setVisibility(View.GONE);
                                 mMap.clear();
                                 drawPointsWithinUserRadius();
                                 onResume();
@@ -269,9 +327,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                         return true;
                     }
                 });
-
-
-
 
         drawPointsWithinUserRadius();
 
@@ -350,6 +405,8 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         mMap.setMyLocationEnabled(true);
+        mMap.setOnPoiClickListener(this);
+
         changeSattelite.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -361,12 +418,16 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                     mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
             }
         });
+        try{
+            mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(getContext(), R.raw.map_style));}
+        catch (Exception e){e.printStackTrace();}
+        mMap.getUiSettings().setMapToolbarEnabled(true);
 
         curUserID = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
         directions.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
+            public void onClick(final View view) {
                 mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
                     @Override
                     public void onMapClick(LatLng point) {
@@ -383,21 +444,44 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                         MarkerOptions opt = new MarkerOptions();
 
                         // Setting the position of the marker
-                        opt.position(point);
+                        opt.position(point).title("Destination");
                         opt.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                         mMap.addMarker(opt);
+//                        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+//                            @Override
+//                            public boolean onMarkerClick(Marker marker) {
+//                                return false;
+//                            }
+//                        });
 
-                        LatLng origin = MarkerPoints.get(0);
-                        LatLng dest = MarkerPoints.get(1);
+                        final LatLng origin = MarkerPoints.get(0);
+                        final LatLng dest = MarkerPoints.get(1);
 
-                        // Getting URL to the Google Directions API
-                        String url = getUrl(origin, dest);
-                        FetchUrl FetchUrl = new FetchUrl();
+                        Legs legs = getDirectionAndDuration(origin,dest);
+                        final Data data = new Data();
+                        data.setLatitude(Double.toString(dest.latitude) + "");
+                        data.setLongitude(Double.toString(dest.longitude) + "");
+                        data.setModified("Destination");
+                        data.setLegs(legs);
 
-                        // Start downloading json data from Google Directions API
-                        FetchUrl.execute(url);
-//                    mMap.moveCamera(CameraUpdateFactory.newLatLng(origin));
-//                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+
+                        view2.setVisibility(View.VISIBLE);
+                        view2.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                final Dialog mBottomSheetDialog = new Dialog(getActivity(),R.style.DialogSlideAnim);//getActivity(), R.style.MaterialDialogSheet);
+                                mBottomSheetDialog.setContentView(R.layout.directions); // your custom view.
+                                //mBottomSheetDialog.setCancelable(true);
+                                mBottomSheetDialog.getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                                mBottomSheetDialog.getWindow().setGravity(Gravity.BOTTOM);
+                                mBottomSheetDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+                                mBottomSheetDialog.show();
+
+                                View v = getLayoutInflater().inflate(R.layout.directions, null);
+
+                                setDurationAndDistance(mBottomSheetDialog, data, origin, dest);
+                            }
+                        });
 
                         MarkerPoints.clear();
 
@@ -427,7 +511,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                 else if (postMarkerKeys.containsKey(marker)) {
                     ViewPostDialogFragment.createInstance(postMarkerKeys.get(marker)).show(getChildFragmentManager(), null);
                 }  // if marker clicked is a post
-                return true;
+                return false;
             }
         });  // add listeners for clicking markers
 
@@ -529,6 +613,53 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
 
     }
 
+    public void setDurationAndDistance(Dialog view, Data data, final LatLng origin, final LatLng dest){
+        driveDistance = (TextView) view.findViewById(R.id.drive_distance);
+        driveDuration = (TextView) view.findViewById(R.id.drive_duration);
+        walkDistance = (TextView) view.findViewById(R.id.walk_distance);
+        walkDuration = (TextView) view.findViewById(R.id.walk_duration);
+        bikeDistance = (TextView) view.findViewById(R.id.bike_distance);
+        bikeDuration = (TextView) view.findViewById(R.id.bike__duration);
+        //busDistance = (TextView) view.findViewById(R.id.bus_distance);
+        //busDuration = (TextView) view.findViewById(R.id.bus_duration);
+        driveRB = (RadioButton) view.findViewById(R.id.car_rb);
+        walkRB = (RadioButton) view.findViewById(R.id.walk_rb);
+        bikeRB = (RadioButton) view.findViewById(R.id.bike_rb);
+
+        // Getting Reference to rg_modes
+        rgModes = (RadioGroup) view.findViewById(R.id.rg_modes);
+
+        rgModes.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+
+                    // Getting URL to the Google Directions API
+                    String url = getUrl(origin, dest);
+                    FetchUrl downloadTask = new FetchUrl();
+                    // Start downloading json data from Google Directions API
+                    downloadTask.execute(url);
+                }
+            });
+
+        //Driving
+        driveDistance.setText(data.getLegs().getDistance().getText());
+        driveDuration.setText(data.getLegs().getDuration().getText());
+
+        Legs legs = getDDwithType(origin, dest, "walking");
+        data.setLegs(legs);
+        walkDistance.setText(data.getLegs().getDistance().getText());
+        walkDuration.setText(data.getLegs().getDuration().getText());
+
+        legs = getDDwithType(origin, dest, "bicycling");
+        data.setLegs(legs);
+        bikeDistance.setText(data.getLegs().getDistance().getText());
+        bikeDuration.setText(data.getLegs().getDuration().getText());
+
+
+
+    }
+
     public void drawRoute(Marker marker) {
         LocationManager locationManager = (LocationManager) getContext().getSystemService(LOCATION_SERVICE);
         @SuppressLint("MissingPermission") Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
@@ -574,19 +705,32 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
         // Destination of route
         String str_dest = "destination=" + dest.latitude + "," + dest.longitude;
 
-
         // Sensor enabled
         String sensor = "sensor=false";
 
+        // Travelling Mode
+        String mode = "mode=driving";
+        try {
+            if (driveRB.isChecked()) {
+                mode = "mode=driving";
+                mMode = 0;
+            } else if (walkRB.isChecked()) {
+                mode = "mode=walking";
+                mMode = 1;
+            } else if (bikeRB.isChecked()) {
+                mode = "mode=bicycling";
+                mMode = 2;
+            }
+        }catch (Exception e){e.printStackTrace();}
+
         // Building the parameters to the web service
-        String parameters = str_origin + "&" + str_dest + "&" + sensor;
+        String parameters = str_origin + "&" + str_dest + "&" + sensor + "&" + mode;
 
         // Output format
         String output = "json";
 
         // Building the url to the web service
         String url = "https://maps.googleapis.com/maps/api/directions/" + output + "?" + parameters;
-
 
         return url;
     }
@@ -660,25 +804,28 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                             //TODO: If you can think of a better way to do city pictures, then implement it
                             if ((dataSnapshot.child("CityName").getValue()).equals("Davis"))
                                 cityRef.child("Picture").setValue("https://firebasestorage.googleapis.com/v0/b/righthererightnow-72e20.appspot.com/o/davis.jpg?alt=media&token=9a201385-b9e7-400c-9e63-dee572aebce3");
-                            if ((dataSnapshot.child("CityName").getValue()).equals("Sacramento"))
+                            else if ((dataSnapshot.child("CityName").getValue()).equals("Sacramento"))
                                 cityRef.child("Picture").setValue("https://firebasestorage.googleapis.com/v0/b/righthererightnow-72e20.appspot.com/o/sacramento.jpg?alt=media&token=1beabb71-309a-4661-8456-73403c27c933");
-                            if ((dataSnapshot.child("CityName").getValue()).equals("Galt"))
+                            else if ((dataSnapshot.child("CityName").getValue()).equals("Galt"))
                                 cityRef.child("Picture").setValue("https://firebasestorage.googleapis.com/v0/b/righthererightnow-72e20.appspot.com/o/galt.jpg?alt=media&token=967f71cf-8a6c-4025-b9bd-62ac03f798ec");
-                            if ((dataSnapshot.child("CityName").getValue()).equals("Dixon"))
+                            else if ((dataSnapshot.child("CityName").getValue()).equals("Dixon"))
                                 cityRef.child("Picture").setValue("https://firebasestorage.googleapis.com/v0/b/righthererightnow-72e20.appspot.com/o/dixon.jpg?alt=media&token=b4d67a69-4016-405c-9a91-1c8d94195440");
-                            if ((dataSnapshot.child("CityName").getValue()).equals("Vacaville"))
+                            else if ((dataSnapshot.child("CityName").getValue()).equals("Vacaville"))
                                 cityRef.child("Picture").setValue("https://firebasestorage.googleapis.com/v0/b/righthererightnow-72e20.appspot.com/o/vacaville.jpg?alt=media&token=89ec6f85-edb5-4428-8384-ceb554e14113");
-                            if ((dataSnapshot.child("CityName").getValue()).equals("Winters"))
+                            else if ((dataSnapshot.child("CityName").getValue()).equals("Winters"))
                                 cityRef.child("Picture").setValue("https://firebasestorage.googleapis.com/v0/b/righthererightnow-72e20.appspot.com/o/winters.png?alt=media&token=7c1b633b-c1e3-4df3-bd36-9a9d082c1841");
-                            if ((dataSnapshot.child("CityName").getValue()).equals("San Francisco"))
+                            else if ((dataSnapshot.child("CityName").getValue()).equals("San Francisco"))
                                 cityRef.child("Picture").setValue("https://firebasestorage.googleapis.com/v0/b/righthererightnow-72e20.appspot.com/o/sanfrancisco.jpg?alt=media&token=6cdb2008-b37a-40ec-b8c2-92780aa08ebb");
+
 
                         } else {
                             //city does not exist, so create new
                             try { //Sometimes, the city doesnt exist on google maps, so try.
                                 City city = new City(addresses.get(0).getLocality(),
                                         addresses.get(0).getAdminArea(),
-                                        addresses.get(0).getCountryName(), " ", "0");
+                                        addresses.get(0).getCountryName(),
+                                        "https://firebasestorage.googleapis.com/v0/b/mapconnect-cf482.appspot.com/o/prettycity.jpg?alt=media&token=29644a0b-daef-429b-9a03-4bae113a1af9",
+                                        "0");
                                 cityRef.setValue(city);
                             } catch (Exception e) {
                             }
@@ -699,7 +846,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                 .draggable(true)
                 .title("My Location");
         //.icon(BitmapDescriptorFactory.fromResource(R.drawable.exc));
-        ourLoc = mMap.addMarker(options);
+        ourLoc = mMap.addMarker(options);;
         if (first) {
             first = false;
             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
@@ -1233,12 +1380,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
             @Override
             public void onClick(View v) {
                 final FragmentManager manager = getActivity().getSupportFragmentManager();
-//                if (manager.findFragmentById(R.id.post_event_create_shim_fragment_container) != null)
-//                    manager.beginTransaction()
-//                            .replace(R.id.post_event_create_shim_fragment_container, new CreatePostFragment())
-//                            .addToBackStack(null).commit();
-//
-//                else
                     manager.beginTransaction()
                             .add(R.id.post_event_create_shim_fragment_container, new CreatePostFragment())
                             .addToBackStack(null).commit();
@@ -1269,12 +1410,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
             @Override
             public void onClick(View v) {
                 final FragmentManager manager = getActivity().getSupportFragmentManager();
-//                if (manager.findFragmentById(R.id.post_event_create_shim_fragment_container) != null)
-//                    manager.beginTransaction()
-//                            .replace(R.id.post_event_create_shim_fragment_container, new CreateEventFragment())
-//                            .addToBackStack(null)
-//                            .commit();
-//                else
                     manager.beginTransaction()
                             .add(R.id.post_event_create_shim_fragment_container, new CreateEventFragment())
                             .addToBackStack(null)
@@ -1348,17 +1483,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
             //no image to upload
         }
     }
-
-
-    public Uri getImageUri(Context inContext, Bitmap inImage) {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        inImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-        String path = MediaStore.Images.Media.insertImage(inContext.getContentResolver(), inImage, "Title", null);
-        if (path != null) return Uri.parse(path);
-        else return null;
-    }
-
-
 
 
     // Fetches data from url passed
@@ -1439,29 +1563,27 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
                 // Fetching all the points in i-th route
                 for (int j = 0; j < path.size(); j++) {
                     HashMap<String, String> point = path.get(j);
-
                     double lat = Double.parseDouble(point.get("lat"));
                     double lng = Double.parseDouble(point.get("lng"));
                     LatLng position = new LatLng(lat, lng);
-
                     points.add(position);
                 }
 
                 // Adding all the points in the route to LineOptions
                 lineOptions.addAll(points);
                 lineOptions.width(10);
-                lineOptions.color(Color.RED);
-
-                Log.d("onPostExecute","onPostExecute lineoptions decoded");
+                if(mMode==0) //Drive
+                    lineOptions.color(Color.RED);
+                else if(mMode==1) // Walk
+                    lineOptions.color(Color.BLUE);
+                else if(mMode==2) // Bike
+                    lineOptions.color(Color.GREEN);
 
             }
 
             // Drawing polyline in the Google Map for the i-th route
             if(lineOptions != null) {
                 mMap.addPolyline(lineOptions);
-            }
-            else {
-                Log.d("onPostExecute","without Polylines drawn");
             }
         }
     }
@@ -1503,6 +1625,132 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback,
             urlConnection.disconnect();
         }
         return data;
+    }
+
+
+
+    private Legs getDirectionAndDuration(final LatLng origin, final LatLng destination){
+        OkHttpClient clientGoogleApi = new OkHttpClient();
+        //clientGoogleApi.interceptors().add(new LoggingInterceptorGoogle());
+        Retrofit retrofitGoogleApi = new Retrofit.Builder()
+                .baseUrl(Constant.GOOGLE_END_POINT)
+                .client(clientGoogleApi)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        serviceGoogleDirection = retrofitGoogleApi.create(ApiService.class);
+
+        final Legs[] distanceDurationModel = new Legs[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Call<DirectionResultsModel> directionResultsCall;
+                directionResultsCall = serviceGoogleDirection.getDistanceAndDuration(origin.latitude + "," + origin.longitude ,
+                        destination.latitude + "," + destination.longitude, "false","driving","true");
+                try {
+                    DirectionResultsModel results = directionResultsCall.execute().body();
+                    distanceDurationModel[0] = results.getRoutes().get(0).getLegs().get(0);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                latch.countDown();
+
+            }
+        });
+
+        thread.start();
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return  distanceDurationModel[0];
+    }
+
+
+    private Legs getDDwithType(final LatLng origin, final LatLng destination, final String type){
+        OkHttpClient clientGoogleApi = new OkHttpClient();
+        //clientGoogleApi.interceptors().add(new LoggingInterceptorGoogle());
+        Retrofit retrofitGoogleApi = new Retrofit.Builder()
+                .baseUrl(Constant.GOOGLE_END_POINT)
+                .client(clientGoogleApi)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        serviceGoogleDirection = retrofitGoogleApi.create(ApiService.class);
+
+        final Legs[] distanceDurationModel = new Legs[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Call<DirectionResultsModel> directionResultsCall;
+                directionResultsCall = serviceGoogleDirection.getDistanceAndDuration(origin.latitude + "," + origin.longitude ,
+                        destination.latitude + "," + destination.longitude, "false",type,"true");
+                try {
+                    DirectionResultsModel results = directionResultsCall.execute().body();
+                    distanceDurationModel[0] = results.getRoutes().get(0).getLegs().get(0);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                latch.countDown();
+
+            }
+        });
+
+        thread.start();
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return  distanceDurationModel[0];
+    }
+
+    @Override
+    public void onPoiClick(PointOfInterest poi) {
+        Toast.makeText(getApplicationContext(), "Clicked: " +
+                        poi.name + "\nPlace ID:" + poi.placeId +
+                        "\nLatitude:" + poi.latLng.latitude +
+                        " Longitude:" + poi.latLng.longitude,
+                Toast.LENGTH_SHORT).show();
+        LatLng point = new LatLng(poi.latLng.latitude,poi.latLng.longitude);
+        MarkerOptions option = new MarkerOptions()
+                .position(point)
+                .draggable(true)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title(poi.name);
+        mMap.addMarker(option);
+    }
+
+
+    // Request photos and metadata for the specified place.
+    private void getPhotos(final String placeId) {
+//        placeId = "ChIJa147K9HX3IAR-lwiGIQv9i4";
+        final Task<PlacePhotoMetadataResponse> photoMetadataResponse = mGeoDataClient.getPlacePhotos(placeId);
+        photoMetadataResponse.addOnCompleteListener(new OnCompleteListener<PlacePhotoMetadataResponse>() {
+            @Override
+            public void onComplete(@NonNull Task<PlacePhotoMetadataResponse> task) {
+                // Get the list of photos.
+                PlacePhotoMetadataResponse photos = task.getResult();
+                // Get the PlacePhotoMetadataBuffer (metadata for all of the photos).
+                PlacePhotoMetadataBuffer photoMetadataBuffer = photos.getPhotoMetadata();
+                // Get the first photo in the list.
+                PlacePhotoMetadata photoMetadata = photoMetadataBuffer.get(0);
+                // Get the attribution text.
+                CharSequence attribution = photoMetadata.getAttributions();
+                // Get a full-size bitmap for the photo.
+                Task<PlacePhotoResponse> photoResponse = mGeoDataClient.getPhoto(photoMetadata);
+                photoResponse.addOnCompleteListener(new OnCompleteListener<PlacePhotoResponse>() {
+                    @Override
+                    public void onComplete(@NonNull Task<PlacePhotoResponse> task) {
+                        PlacePhotoResponse photo = task.getResult();
+                        Bitmap bitmap = photo.getBitmap();
+                    }
+                });
+            }
+        });
     }
 
 

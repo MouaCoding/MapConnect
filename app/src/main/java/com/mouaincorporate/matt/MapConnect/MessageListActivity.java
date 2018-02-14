@@ -489,8 +489,8 @@ public class MessageListActivity extends AppCompatActivity {
                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                     Log.d("KEYYY", dataSnapshot.child("message").getValue(String.class));
                     Log.d("KEYYYYYYYYY", dataSnapshot.child("date").getValue(String.class));
-                    messageView.setText(dataSnapshot.child("message").getValue(String.class));
-                    date.setText(dataSnapshot.child("date").getValue(String.class));
+                    //messageView.setText(dataSnapshot.child("message").getValue(String.class));
+                    //date.setText(dataSnapshot.child("date").getValue(String.class));
 
                 }
 

@@ -305,6 +305,7 @@ public class ProfilePageFragment extends Fragment {
                 Log.d("pathfileee", bitmap.toString());
                 //Picasso.with(getContext()).load(filePath).into(profilePicture);
                 profilePicture.setImageBitmap(bitmap);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -389,7 +390,7 @@ public class ProfilePageFragment extends Fragment {
                 }
             });
         } else {
-            Toast.makeText(getApplicationContext(), "Select an image", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(getApplicationContext(), "Select an image", Toast.LENGTH_SHORT).show();
         }
     }
 

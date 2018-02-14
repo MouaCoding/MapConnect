@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -104,6 +105,13 @@ public class TrendingFragment extends Fragment {
         cityArray = new ArrayList<>();
         trendingList = (ListView) r.findViewById(R.id.global_list_trending);
         cityList = (ListView) r.findViewById(R.id.global_list_trending);
+
+        ArrayList<String> cities = new ArrayList<>();
+        for (String city : getResources().getStringArray(R.array.cities)) {
+            cities.add(city);
+        }
+        //Log.d("cityyyy", cities.get(cities.size()-1));
+
 
         queryAllEvents();
         return r;
@@ -615,8 +623,9 @@ public class TrendingFragment extends Fragment {
                     City cty = dataSnapshot.getValue(City.class);
                     cityArray.add(cty);
                 }
+                try{
                 cityAdapter = new CityAdapter(getContext(), cityArray);
-                cityList.setAdapter(cityAdapter);
+                cityList.setAdapter(cityAdapter);} catch (Exception e){e.printStackTrace();}
             }
 
             @Override

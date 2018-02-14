@@ -84,6 +84,10 @@ dependencies {
     compile 'com.firebase:geofire-android:2.1.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'junit:junit:4.12'
+
+    implementation 'com.squareup.okhttp3:okhttp:3.9.1'
+    compile 'com.squareup.retrofit2:retrofit:2.3.0'
+    compile 'com.sothree.slidinguppanel:library:3.4.0'
 }
 
 
